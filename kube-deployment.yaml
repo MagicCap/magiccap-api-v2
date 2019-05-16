@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: magiccap-api
+spec:
+  selector:
+    matchLabels:
+      run: magiccap-api
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        run: magiccap-api
+    spec:
+      containers:
+      - name: magiccap-api
+        image: registry.jakegealer.me/magiccap-api
+        imagePullPolicy: "Always"
+        ports:
+        - containerPort: 8000
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+        - name: RETHINKDB_HOSTNAME
+          value: rethinkdb-rethinkdb-cluster
+        - name: RETHINKDB_PASSWORD
+          value: rethinkdb
+      imagePullSecrets:
+      - name: private-registry
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: magiccap-api
+  labels:
+    run: magiccap-api
+spec:
+  ports:
+  - port: 8000
+    protocol: TCP
+  selector:
+    run: magiccap-api
+---
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Certificate
+metadata:
+  name: magiccap-api-prod-letsencrypt
+spec:
+  secretName: magiccap-api-prod-letsencrypt
+  dnsNames:
+  - api.magiccap.me
+  acme:
+    config:
+    - http01:
+        ingressClass: nginx
+      domains:
+      - api.magiccap.me
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: magiccap-api-ingress
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "true"
+    kubernetes.io/tls-acme: "true"
+    certmanager.k8s.io/issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+  - hosts:
+    - api.magiccap.me
+    secretName: magiccap-api-prod-letsencrypt
+  rules:
+  - host: api.magiccap.me
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: magiccap-api
+          servicePort: 8000
