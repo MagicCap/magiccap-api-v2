@@ -45,10 +45,10 @@ async def latest_versions(req):
     })
 
 
-async def get_updates(version, beta, app):
+async def get_updates(version, app):
     """Gets all updates that is avaliable for the user."""
     updates = await r.table("versions").order_by(index="release_id").skip(
-        version['release_id']).filter(r.row['beta'] == beta).coerce_to("array").run(app.conn)
+        version['release_id']).coerce_to("array").run(app.conn)
 
     return updates
 
@@ -73,20 +73,22 @@ async def check_version(request, current_version):
             "error": "Version does not exist in the database."
         }, status=400)
 
-    updates_since = await get_updates(version_db, beta_channel, request.app)
-    if len(updates_since) == 0:
+    updates_since = await get_updates(version_db, request.app)
+    changelogs = ""
+
+    last_model = None
+
+    for index, inbetween_release in enumerate(updates_since):
+        if beta_channel == inbetween_release['beta']:
+            last_model = inbetween_release
+            if index + 1 != len(updates_since):
+                changelogs += inbetween_release['changelogs'] + "\n"
+
+    if not last_model:
         return response.json({
             "success": True,
             "updated": True
         })
-
-    changelogs = ""
-
-    last_model = updates_since.pop()
-
-    for inbetween_release in updates_since:
-        if last_model['beta'] == inbetween_release['beta']:
-            changelogs += inbetween_release['changelogs'] + "\n"
 
     changelogs += last_model['changelogs'] + "\n"
 
