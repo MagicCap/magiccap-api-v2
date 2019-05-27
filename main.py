@@ -1,6 +1,8 @@
 # This code is a part of MagicCap which is a MPL-2.0 licensed project.
 # Copyright (C) Jake Gealer <jake@gealer.email> 2019.
 
+import sentry_sdk
+from sentry_sdk.integrations.sanic import SanicIntegration
 from sanic import Sanic
 from sanic.websocket import WebSocketProtocol
 from pluginbase import PluginBase
@@ -74,6 +76,12 @@ for plugin in plugin_source.list_plugins():
     loaded = plugin_source.load_plugin(plugin)
     loaded.setup(app)
 # Loads all of the plugins.
+
+sentry_sdk.init(
+    dsn=os.environ['SENTRY_DSN'],
+    integrations=[SanicIntegration()]
+)
+# Loads in Sentry.
 
 if __name__ == "__main__":
     app.run(port=8000, host="0.0.0.0", protocol=WebSocketProtocol)

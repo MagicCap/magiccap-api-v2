@@ -25,6 +25,11 @@ spec:
           value: rethinkdb-rethinkdb-cluster
         - name: RETHINKDB_PASSWORD
           value: rethinkdb
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: magiccap-api-v2
+              key: sentry
       imagePullSecrets:
       - name: private-registry
 ---
