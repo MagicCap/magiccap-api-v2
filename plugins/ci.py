@@ -28,7 +28,7 @@ async def new_version(request, ci_api_key, tag):
             j = await resp.json()
 
     await r.table("versions").insert({
-        "release_id": i,
+        "release_id": i + 1,
         "id": tag,
         "changelogs": j['body'],
         "beta": "b" in tag
