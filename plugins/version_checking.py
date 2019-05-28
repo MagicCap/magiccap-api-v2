@@ -84,6 +84,27 @@ async def check_version(request, current_version):
             if index + 1 != len(updates_since):
                 changelogs += inbetween_release['changelogs'] + "\n"
 
+    try:
+        last_model_updates = updates_since.pop()
+    except IndexError:
+        last_model_updates = {"beta": True}
+
+    if not last_model and last_model_updates['beta'] == False:
+        # Ignore everything else, this is a beta > stable release.
+        last_model = last_model_updates
+        return response.json({
+            "success": True,
+            "updated": False,
+            "latest": {
+                "version": last_model['id'],
+                "zip_paths": {
+                    "mac": "https://s3.magiccap.me/upgrades/v{}/magiccap-mac.zip".format(last_model['id']),
+                    "linux": "https://s3.magiccap.me/upgrades/v{}/magiccap-linux.zip".format(last_model['id'])
+                }
+            },
+            "changelogs": last_model['changelogs'] + "\n"
+        })
+
     if not last_model:
         return response.json({
             "success": True,
