@@ -49,11 +49,14 @@ class WebSocketManager:
                 except BaseException:
                     continue
                 if isinstance(data, dict):
-                    if data.get("t") == "watch":
+                    req_type = data.get("t")
+                    if req_type == "watch":
                         if isinstance(data.get("beta", False), bool):
                             try:
                                 self.watchlist[data.get("beta", False)].append(ws)
                             except KeyError:
                                 self.watchlist[data.get("beta", False)] = [ws]
+                    elif req_type == "heartbeat":
+                        await ws.send(ujson.dumps({"t": "heartbeat_ack"}))
             except ConnectionClosed:
                 break
