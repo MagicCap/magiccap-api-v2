@@ -6,3 +6,5 @@ The job of this API is pretty much the same as v1 except for:
 - It contains a WebSocket update manager.
 - It uses Sanic.
 - /travis is now /ci
+
+The Kubernetes deployment is [here](https://github.com/JakeMakesStuff/Kube-Deployments/tree/master/magiccap-api).
