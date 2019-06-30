@@ -12,26 +12,15 @@ version = Blueprint("version", url_prefix="/version")
 @version.route("/latest")
 async def latest_versions(req):
     """Gets information about the latest MagicCap releases."""
-    latest_release = None
-    latest_beta = None
+    latest_beta, latest_release = req.app.version_cache.get_latest()
 
-    versions = await r.table("versions").order_by(index="release_id").coerce_to("array").run(req.app.conn)
-    for v in versions:
-        if v['beta']:
-            latest_beta = v
-        else:
-            latest_release = v
-
-    beta_json = None
-    beta_newer = False
-    if latest_beta:
-        beta_json = {
-            "mac": "https://s3.magiccap.me/upgrades/v{}/magiccap-mac.dmg".format(latest_beta['id']),
-            "linux": "https://s3.magiccap.me/upgrades/v{}/magiccap-linux.zip".format(latest_beta['id']),
-            "changelogs": latest_beta['changelogs'],
-            "version": latest_beta['id']
-        }
-        beta_newer = latest_beta['release_id'] > latest_release['release_id']
+    beta_json = {
+        "mac": "https://s3.magiccap.me/upgrades/v{}/magiccap-mac.dmg".format(latest_beta['id']),
+        "linux": "https://s3.magiccap.me/upgrades/v{}/magiccap-linux.zip".format(latest_beta['id']),
+        "changelogs": latest_beta['changelogs'],
+        "version": latest_beta['id']
+    }
+    beta_newer = latest_beta['release_id'] > latest_release['release_id']
 
     return response.json({
         "beta": beta_json,
@@ -43,14 +32,6 @@ async def latest_versions(req):
         },
         "is_beta_newer_than_release": beta_newer
     })
-
-
-async def get_updates(version, app):
-    """Gets all updates that is avaliable for the user."""
-    updates = await r.table("versions").order_by(index="release_id").skip(
-        version['release_id']).coerce_to("array").run(app.conn)
-
-    return updates
 
 
 @version.route("/check/<current_version>")
@@ -73,7 +54,7 @@ async def check_version(request, current_version):
             "error": "Version does not exist in the database."
         }, status=400)
 
-    updates_since = await get_updates(version_db, request.app)
+    updates_since = request.app.version_cache.since_version_id(version_db['release_id'])
     changelogs = ""
 
     last_model = None

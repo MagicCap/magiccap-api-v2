@@ -8,6 +8,7 @@ from sanic.websocket import WebSocketProtocol
 from pluginbase import PluginBase
 from sanic_cors import CORS
 from websocket_manager import WebSocketManager
+from version_cache import VersionCache
 import rethinkdb as r
 import os
 # Imports go here.
@@ -21,6 +22,7 @@ class RethinkSanic(Sanic):
         self.register_listener(self._connect_rethinkdb, "before_server_start")
         self.search = None
         self.websocket_manager = None
+        self.version_cache = None
 
     async def create_db_if_not_exists(self, db):
         try:
@@ -60,6 +62,7 @@ class RethinkSanic(Sanic):
         await app.create_index_if_not_exists("installs", "device_id")
 
         WebSocketManager(app, loop)
+        app.version_cache = VersionCache(app.conn, loop)
 
 
 app = RethinkSanic(__name__)
@@ -78,7 +81,7 @@ for plugin in plugin_source.list_plugins():
 # Loads all of the plugins.
 
 sentry_sdk.init(
-    dsn=os.environ['SENTRY_DSN'],
+    dsn=os.environ.get("SENTRY_DSN"),
     integrations=[SanicIntegration()]
 )
 # Loads in Sentry.
