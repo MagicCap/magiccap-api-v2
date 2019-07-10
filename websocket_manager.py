@@ -13,31 +13,36 @@ class WebSocketManager:
         loop.create_task(self._watch_versions())
 
     async def _watch_versions(self):
-        feed = await r.table("versions").changes().run(self.app.conn)
-        while await feed.fetch_next():
-            change = await feed.next()
-            old = change['old_val']
-            new = change['new_val']
-            if not old and new:
-                del new['release_id']
-                new['version'] = new['id']
-                del new['id']
+        while True:
+            try:
+                feed = await r.table("versions").changes().run(self.app.conn)
+                while await feed.fetch_next():
+                    change = await feed.next()
+                    old = change['old_val']
+                    new = change['new_val']
+                    if not old and new:
+                        del new['release_id']
+                        new['version'] = new['id']
+                        del new['id']
 
-                serialized = ujson.dumps({"t": "update", "info": new})
-                beta = new['beta']
+                        serialized = ujson.dumps({"t": "update", "info": new})
+                        beta = new['beta']
 
-                async def send_to_cat(cat):
-                    for watcher in self.watchlist.get(cat, []):
-                        try:
-                            await watcher.send(serialized)
-                        except ConnectionClosed:
-                            self.watchlist[cat].remove(watcher)
+                        async def send_to_cat(cat):
+                            for watcher in self.watchlist.get(cat, []):
+                                try:
+                                    await watcher.send(serialized)
+                                except ConnectionClosed:
+                                    self.watchlist[cat].remove(watcher)
 
-                if beta:
-                    await send_to_cat(True)
-                else:
-                    await send_to_cat(True)
-                    await send_to_cat(False)
+                        if beta:
+                            await send_to_cat(True)
+                        else:
+                            await send_to_cat(True)
+                            await send_to_cat(False)
+            except r.ReqlOpFailedError:
+                # Well the connection dropped. This will loop back around.
+                pass
 
     async def _handle_ws(self, _, ws):
         watching = []
