@@ -14,23 +14,28 @@ class VersionCache:
 
     async def _handle_db(self):
         self._cache = await r.table("versions").order_by(index="release_id").coerce_to("array").run(self.conn)
-        feed = await r.table("versions").changes().run(self.conn)
-        while await feed.fetch_next():
-            change = await feed.next()
-            old = change['old_val']
-            new = change['new_val']     
-            if old:
-                if new:
-                    for i in self._cache:
-                        if i['id'] == old['id']:
-                            for k in new.keys():
-                                i[k] = new[k]
-                else:
-                    for i in self._cache:
-                        if i['id'] == old['id']:
-                            self._cache.remove(i)
-            else:
-                self._cache.append(new)
+        while True:
+            try:
+                feed = await r.table("versions").changes().run(self.conn)
+                while await feed.fetch_next():
+                    change = await feed.next()
+                    old = change['old_val']
+                    new = change['new_val']     
+                    if old:
+                        if new:
+                            for i in self._cache:
+                                if i['id'] == old['id']:
+                                    for k in new.keys():
+                                        i[k] = new[k]
+                        else:
+                            for i in self._cache:
+                                if i['id'] == old['id']:
+                                    self._cache.remove(i)
+                    else:
+                        self._cache.append(new)
+            except r.ReqlOpFailedError:
+                # Well the connection dropped. This will loop back around.
+                pass
 
     def since_version_id(self, version_id):
         i = 0
