@@ -1,6 +1,7 @@
 # This code is a part of MagicCap which is a MPL-2.0 licensed project.
 # Copyright (C) Jake Gealer <jake@gealer.email> 2019.
 
+import rethinkdb_monkeypatch
 import sentry_sdk
 from sentry_sdk.integrations.sanic import SanicIntegration
 from sanic import Sanic

@@ -13,7 +13,7 @@ class VersionCache:
         self._cache = []
 
     async def _handle_db(self):
-        self._cache = await r.table("versions").order_by(index="release_id").coerce_to("array").run(self.conn)
+        self._cache = sorted(await r.table("versions").coerce_to("array").run(self.conn), key=lambda x: x['release_id'])
         while True:
             try:
                 feed = await r.table("versions").changes().run(self.conn)
